@@ -11,9 +11,9 @@ const generateToken = (id: string, role: string) => {
 
 export const register = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { name, email, password } = req.body;
+        const { companyName, email, password } = req.body;
 
-        if (!name || !email || !password) {
+        if (!companyName || !email || !password) {
             res.status(400).json({ message: "Please enter all fields" });
             return;
         }
@@ -28,7 +28,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         const hashedPassword = await bcrypt.hash(password, salt);
 
         const user = await User.create({
-            name,
+            companyName,
             email,
             password: hashedPassword,
         });
@@ -36,7 +36,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         if (user) {
             res.status(201).json({
                 _id: user.id,
-                name: user.name,
+                companyName: user.companyName,
                 email: user.email,
                 role: user.role,
                 token: generateToken(user.id, user.role),
@@ -45,6 +45,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             res.status(400).json({ message: "Invalid user data" });
         }
     } catch (error) {
+        console.log(error);
         res.status(500).json({ message: "Server error" });
     }
 };
@@ -58,7 +59,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         if (user && (await bcrypt.compare(password, user.password as string))) {
             res.json({
                 _id: user.id,
-                name: user.name,
+                companyName: user.companyName,
                 email: user.email,
                 role: user.role,
                 token: generateToken(user.id, user.role),

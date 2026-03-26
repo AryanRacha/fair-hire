@@ -7,8 +7,8 @@ const storage = new CloudinaryStorage({
     params: async (req, file) => {
         return {
             folder: "resumes",
-            format: "pdf", // forces pdf format or use file.mimetype
-            public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
+            resource_type: "raw", // Uploads as a generic file instead of an 'image' to bypass PDF delivery restrictions
+            public_id: `${Date.now()}-${file.originalname}`,
         };
     },
 });

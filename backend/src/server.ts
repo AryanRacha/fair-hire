@@ -1,7 +1,7 @@
+import "dotenv/config"; // Must be the absolute first import
 import express from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-
 // Routes
 import authRoutes from "./routes/auth.js";
 import formRoutes from "./routes/form.js";
@@ -24,12 +24,11 @@ const connectDB = async () => {
         process.exit(1);
     }
 };
-connectDB();
 
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/form", formRoutes);
-app.use("/api/form/:id/candidate", candidateRoutes);
+app.use("/api/form/:formId/candidate", candidateRoutes);
 
 app.get("/", (_req, res) => {
     res.json({ message: "Fair Hire API is running" });
@@ -37,5 +36,6 @@ app.get("/", (_req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
+    connectDB();
     console.log(`Server is running on port ${PORT}`);
 });
