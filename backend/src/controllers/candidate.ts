@@ -1,11 +1,12 @@
 import type { Request, Response } from "express";
 import Candidate from "../models/Candidate.js";
 import Form from "../models/Form.js";
-import { screenResume } from "../utils/mlService.js";
+import { screenCandidate } from "../utils/mlService.js";
+import cloudinary from "../utils/cloudinary.js";
 
 export const submitCandidate = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { id: formId } = req.params;
+        const { formId } = req.params;
         const { name, email } = req.body;
 
         if (!name || !email) {
@@ -27,19 +28,44 @@ export const submitCandidate = async (req: Request, res: Response): Promise<void
         // multer-storage-cloudinary attaches the secure URL as req.file.path
         const resumeUrl = req.file.path;
 
-        // Optionally, call ML Service to screen
-        const mlResult = await screenResume(resumeUrl, form.requirements);
+        try {
+            // 1. Call ML Service API through utility helper
+            const mlResult = await screenCandidate(resumeUrl, form.requirements);
 
-        const candidate = await Candidate.create({
-            formId: String(formId),
-            name,
-            email,
-            resumeUrl,
-            resumeText: mlResult.text,
-            mlScore: mlResult.score,
-        });
+            // 2. Create candidate ONLY if ML service succeeds
+            const candidate = await Candidate.create({
+                formId: String(formId),
+                name,
+                email,
+                resumeUrl,
+                matchScore: mlResult.xgboost_rank,
+                fitScore: mlResult.fit_score,
+                fitBreakdown: mlResult.fit_breakdown,
+                resumeQuality: mlResult.resume_quality,
+                limeData: mlResult.lime_data,
+            });
 
-        res.status(201).json(candidate);
+            // Increment the candidate count on the parent form
+            await Form.findByIdAndUpdate(formId, { $inc: { candidatesCount: 1 } });
+
+            res.status(201).json(candidate);
+        } catch (mlErr: any) {
+            console.error("ML Service failed. Candidate application aborted.", mlErr.message || mlErr);
+            
+            if (req.file && req.file.filename) {
+                try {
+                    await cloudinary.uploader.destroy(req.file.filename);
+                    console.log(`Deleted orphan Cloudinary file: ${req.file.filename}`);
+                } catch (cloudinaryErr) {
+                    console.error("Failed to clean up Cloudinary file:", cloudinaryErr);
+                }
+            }
+
+            res.status(502).json({ 
+                message: "Application could not be processed due to scoring engine failure.",
+                error: mlErr.message || "Unknown ML error" 
+            });
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Server error", error });
@@ -48,8 +74,8 @@ export const submitCandidate = async (req: Request, res: Response): Promise<void
 
 export const getCandidatesByForm = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { id: formId } = req.params;
-        const candidates = await Candidate.find({ formId: String(formId) }).sort({ mlScore: -1, createdAt: -1 });
+        const { formId } = req.params;
+        const candidates = await Candidate.find({ formId: String(formId) }).sort({ matchScore: -1, createdAt: -1 });
         res.json(candidates);
     } catch (error) {
         res.status(500).json({ message: "Server error", error });
