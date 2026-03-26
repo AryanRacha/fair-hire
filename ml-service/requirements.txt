@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+scikit-learn
+nltk
+textstat
+language-tool-python
+xgboost
+python-multipart
+requests
+pdfplumber
+PyMuPDF
+python-docx
