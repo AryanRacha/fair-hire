@@ -3,15 +3,30 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
 import { useNavigate, Link } from "react-router-dom"
-import { Building2 } from "lucide-react"
+import { Building2, Loader2 } from "lucide-react"
+import { useState } from "react"
+import { api } from "../../lib/api"
 
 export default function Login() {
   const navigate = useNavigate()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: implement actual auth
-    navigate("/dashboard")
+    setError("")
+    setLoading(true)
+    try {
+      const res = await api.login({ email, password })
+      localStorage.setItem("token", res.token)
+      navigate("/dashboard")
+    } catch (err: any) {
+      setError(err.message || "Failed to login")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -32,20 +47,22 @@ export default function Login() {
             <CardDescription className="text-slate-500 font-medium">Enter your credentials to access your account</CardDescription>
           </CardHeader>
           <CardContent>
+            {error && (
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-md mb-4 border border-red-200">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-slate-700">Email</Label>
-                <Input id="email" type="email" placeholder="name@company.com" required className="bg-white border-slate-200 focus-visible:ring-slate-400 h-11" />
+                <Input id="email" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@company.com" required className="bg-white border-slate-200 focus-visible:ring-slate-400 h-11" />
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-slate-700">Password</Label>
-                  <a href="#" className="text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Forgot password?</a>
-                </div>
-                <Input id="password" type="password" required className="bg-white border-slate-200 focus-visible:ring-slate-400 h-11" />
+                <Label htmlFor="password" className="text-slate-700">Password</Label>
+                <Input id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required className="bg-white border-slate-200 focus-visible:ring-slate-400 h-11" />
               </div>
-              <Button type="submit" className="w-full h-11 mt-2 text-base font-medium shadow-sm transition-all hover:shadow-md bg-slate-900 hover:bg-slate-800 text-white">
-                Sign In
+              <Button type="submit" disabled={loading} className="w-full h-11 mt-2 text-base font-medium shadow-sm transition-all hover:shadow-md bg-slate-900 hover:bg-slate-800 text-white disabled:opacity-70">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : "Sign In"}
               </Button>
             </form>
 
