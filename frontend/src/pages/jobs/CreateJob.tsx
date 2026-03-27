@@ -3,17 +3,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../..
 import { Input } from "../../components/ui/input"
 import { Label } from "../../components/ui/label"
 import { useNavigate } from "react-router-dom"
-import { ArrowLeft, CheckCircle2, Copy } from "lucide-react"
+import { ArrowLeft, CheckCircle2, Copy, Loader2 } from "lucide-react"
 import { useState } from "react"
+import { api } from "../../lib/api"
 
 export default function CreateJob() {
   const navigate = useNavigate()
   const [createdLink, setCreatedLink] = useState("")
 
-  const handleCreate = (e: React.FormEvent) => {
+  const [title, setTitle] = useState("")
+  const [skills, setSkills] = useState("")
+  const [yearOfExperience, setYearOfExperience] = useState("")
+  const [education, setEducation] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Mock API creation
-    setCreatedLink(`${window.location.origin}/apply/mock-job-id-123`)
+    setLoading(true)
+    setError("")
+    try {
+      const skillsArray = skills.split(",").map(s => s.trim()).filter(Boolean)
+      const educationArray = education.split(",").map(e => e.trim()).filter(Boolean)
+      const expNumber = parseInt(yearOfExperience) || 0
+
+      const data = await api.createForm({ 
+        title, 
+        skills: skillsArray, 
+        year_of_experience: expNumber, 
+        education: educationArray 
+      })
+      setCreatedLink(`${window.location.origin}/apply/${data._id || data.id}`)
+    } catch (err: any) {
+      setError(err.message || "Failed to create job")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -30,36 +55,46 @@ export default function CreateJob() {
         <CardContent className="pt-8">
           {!createdLink ? (
             <form onSubmit={handleCreate} className="space-y-6">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 rounded-md p-3 text-sm font-medium">
+                  {error}
+                </div>
+              )}
               <div className="space-y-2">
                 <Label htmlFor="title" className="text-base font-semibold text-slate-800">Job Title</Label>
-                <Input id="title" placeholder="e.g. Senior Product Designer" required className="h-12 border-slate-200 focus-visible:ring-slate-400 bg-white" />
+                <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Senior Software Engineer" required className="h-12 border-slate-200 focus-visible:ring-slate-400 bg-white" />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="department" className="text-sm font-semibold text-slate-800">Department</Label>
-                  <Input id="department" placeholder="e.g. Engineering" className="h-11 border-slate-200 bg-white" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-sm font-semibold text-slate-800">Location</Label>
-                  <Input id="location" placeholder="e.g. Remote, NY" className="h-11 border-slate-200 bg-white" />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-base font-semibold text-slate-800">Job Description</Label>
+                <Label htmlFor="skills" className="text-base font-semibold text-slate-800">Required Skills</Label>
                 <textarea 
-                  id="description" 
-                  rows={6} 
+                  id="skills" 
+                  value={skills}
+                  onChange={e => setSkills(e.target.value)}
+                  rows={3} 
                   required
                   className="w-full rounded-md border border-slate-200 bg-white px-3 py-3 text-sm shadow-sm placeholder:text-slate-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-slate-400 transition-shadow"
-                  placeholder="Describe the responsibilities and requirements..."
+                  placeholder="e.g. Python, React, MongoDB (comma-separated)"
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="experience" className="text-sm font-semibold text-slate-800">Minimum Years of Experience</Label>
+                  <Input id="experience" type="number" min="0" value={yearOfExperience} onChange={e => setYearOfExperience(e.target.value)} placeholder="e.g. 3" required className="h-11 border-slate-200 bg-white" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="education" className="text-sm font-semibold text-slate-800">Required Education</Label>
+                  <Input id="education" value={education} onChange={e => setEducation(e.target.value)} placeholder="e.g. Bachelors, Masters" required className="h-11 border-slate-200 bg-white" />
+                </div>
+              </div>
+
               <div className="pt-6 border-t border-slate-100 flex justify-end gap-3 mt-8">
-                <Button type="button" variant="outline" className="h-11 px-6 font-semibold border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50" onClick={() => navigate("/dashboard")}>Cancel</Button>
-                <Button type="submit" className="h-11 px-8 font-semibold bg-slate-900 text-white shadow-md hover:bg-slate-800 hover:shadow-lg transition-all">Create Job</Button>
+                <Button type="button" variant="outline" disabled={loading} className="h-11 px-6 font-semibold border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50" onClick={() => navigate("/dashboard")}>Cancel</Button>
+                <Button type="submit" disabled={loading} className="h-11 px-8 font-semibold bg-slate-900 text-white shadow-md hover:bg-slate-800 hover:shadow-lg transition-all disabled:opacity-70">
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto mr-2 inline" /> : null}
+                  Create Job
+                </Button>
               </div>
             </form>
           ) : (
